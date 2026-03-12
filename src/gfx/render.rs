@@ -1,21 +1,26 @@
 pub use wgpu;
+use crate::gfx::gcode_render::SEGMENT_COUNT;
+
 use super::gcode_render::GCodePass;
 use super::graphics_context::GraphicsContext;
+use super::camera;
+use super::super::interface::InterfaceContext;
 
 use winit::window::{Window, WindowId, WindowAttributes};
 use winit::{dpi::PhysicalSize};
 use std::sync::Arc;
 use std::time::Instant;
-use super::super::interface::InterfaceContext;
+use glam::Vec3;
 
 pub struct GFXRenderer {
     pub gfx_ctx : GraphicsContext,
     gcode_pass : GCodePass,
+    camera : camera::Camera,
 }
 
 impl GFXRenderer {
     pub async fn new(window : Arc<Window>) -> Self {
-        let instance_desc = wgpu::InstanceDescriptor::default();
+        let mut instance_desc = wgpu::InstanceDescriptor::default();
         let instance = wgpu::Instance::new(&instance_desc);
 
         let surface : wgpu::Surface = instance.create_surface(window.clone()).unwrap();
@@ -48,13 +53,23 @@ impl GFXRenderer {
 
         GFXRenderer::configure_surface(&gfx_ctx);
 
-        let gcode_pass : GCodePass = GCodePass::new(&gfx_ctx);
+        let mut gcode_pass : GCodePass = GCodePass::new(&gfx_ctx);
+        gcode_pass.rengenerate_geometry(&gfx_ctx);
+        gcode_pass.create_camera_buffer(&gfx_ctx);
 
         GFXRenderer {
             gfx_ctx,
-            gcode_pass
-
+            gcode_pass,
+            camera : camera::Camera::build_camera_matrix(
+                Vec3{x : 6.0, y : 6.0, z : 6.0}, 
+                Vec3{x : 0.0, y : 0.0, z : 0.0}, 
+                1.0),
         }
+    }
+
+    pub fn reconfigure_surface(&mut self, new_size : PhysicalSize<u32>) {
+        self.gfx_ctx.size = new_size;
+        GFXRenderer::configure_surface(&self.gfx_ctx);
     }
 
     fn configure_surface(gfx_ctx : &GraphicsContext) {
@@ -72,6 +87,14 @@ impl GFXRenderer {
         gfx_ctx.surface.configure(&gfx_ctx.device, &surface_config);
 
         println!("Surface created");
+    }
+
+    pub fn update_camera(&self, camera : &camera::Camera)
+    {
+        self.gfx_ctx.queue.write_buffer(
+            &self.gcode_pass.render_buffers.as_ref().unwrap().camera_buffer, 
+            0, 
+            bytemuck::cast_slice(camera.view_proj.as_ref()));
     }
 
     pub fn render(&mut self, interface_context : &mut InterfaceContext) {
@@ -101,8 +124,14 @@ impl GFXRenderer {
             occlusion_query_set : None,
         });
 
+        let g_buffers = self.gcode_pass.gcode_buffers.as_ref().unwrap();
+        let r_buffers = self.gcode_pass.render_buffers.as_ref().unwrap();
+
         renderpass.set_pipeline(&self.gcode_pass.render_pipeline);
-        renderpass.draw(0..3, 0..1);
+        renderpass.set_vertex_buffer(0, g_buffers.vertex_buffer.slice(..));
+        renderpass.set_index_buffer(g_buffers.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+        renderpass.set_bind_group(0, Some(&r_buffers.render_bind_group), &[]);
+        renderpass.draw_indexed(0..(6*SEGMENT_COUNT as u32), 0, 0..1);
 
         interface_context.renderer.render(
             interface_context.context.render(),

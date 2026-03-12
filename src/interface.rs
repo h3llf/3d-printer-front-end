@@ -3,7 +3,7 @@ use imgui;
 use imgui_wgpu::{Renderer, RendererConfig};
 use imgui_winit_support::WinitPlatform;
 use std::time::Instant;
-use winit::window::Window;
+use winit::{window::Window, event::*};
 
 pub struct InterfaceContext {
     pub context : imgui::Context,
@@ -16,13 +16,15 @@ pub struct InterfaceContext {
 
 #[derive(Default)]
 pub struct UI {
-    pub interface_context : Option<InterfaceContext>
+    pub interface_context : Option<InterfaceContext>,
+    frame_count : u32,
 }
 
 impl UI {
     pub fn init_imgui(&mut self, gfx_context : &GraphicsContext) {
         let mut context = imgui::Context::create();
         let mut platform = imgui_winit_support::WinitPlatform::new(&mut context);
+
         platform.attach_window(
             context.io_mut(), 
             gfx_context.window.as_ref(), 
@@ -71,6 +73,8 @@ impl UI {
             last_cursor,
         });
 
+        self.frame_count = 0;
+
         println!("Imgui initialized");
     }
 
@@ -85,11 +89,14 @@ impl UI {
             .prepare_frame(ctx.context.io_mut(), window)
             .expect("Failed to prepare imgui frame");
 
+        self.frame_count += 1;
+        
         let imgui_frame = ctx.context.frame();
         imgui_frame.window("Test")
             .size([300.0, 100.0], imgui::Condition::FirstUseEver)
             .build(|| {
-                imgui_frame.text("Hello world");
+                imgui_frame.text(format!{"Hello world: {}", self.frame_count});
+                imgui_frame.button("btn");
             });
 
         if ctx.last_cursor != imgui_frame.mouse_cursor() {
@@ -99,6 +106,11 @@ impl UI {
         ctx.platform.prepare_render(imgui_frame, window);
 
 
+    }
+
+    pub fn handle_event<T>(&mut self, window : &Window, event : &Event<T>) {
+        let ctx : &mut InterfaceContext = self.interface_context.as_mut().unwrap();
+        ctx.platform.handle_event(ctx.context.io_mut(), window, event);
     }
 }
 
