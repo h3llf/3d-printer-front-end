@@ -28,6 +28,8 @@ pub struct OrbitCamera {
     last_pos : Vec2,
     pub pressed : bool,
     pub just_pressed : bool,
+    pub middle_pressed : bool,
+    pub middle_just_pressed : bool,
 
     // Camera state
     pub zoom_factor : f32,
@@ -37,6 +39,7 @@ pub struct OrbitCamera {
 
 const WORLD_UP : Vec3 = Vec3::Y;
 
+// TODO: Pan control, change origin, ortho projection
 impl OrbitCamera {
     pub fn new(start_x : f32, start_y : f32) -> Self {
         Self {
@@ -44,38 +47,51 @@ impl OrbitCamera {
             last_pos : Vec2{x : start_x, y : start_y},
             pressed : false,
             just_pressed : false,
-            zoom_factor : 1.0,
+            middle_pressed : false,
+            middle_just_pressed : false,
+            zoom_factor : 10.0,
             target : Vec3{x : 0.0, y : 0.0, z : 0.0},
             offset : Vec3{x : 1.0, y : 1.0, z : 1.0},
         }
     }
 
     pub fn update_mouse_pos(&mut self, x : f32, y : f32) {
-        if !self.pressed {
-            return;
+        if self.pressed {
+            let dx : f32 = (self.last_pos.x - x) * self.sensitivity;
+            let dy : f32 = (self.last_pos.y - y) * self.sensitivity;
+            self.last_pos = Vec2 { x, y };
+            self.rotate_camera(dx, dy);
+        } else if self.middle_pressed {
+            let dx : f32 = (self.last_pos.x - x) * self.sensitivity;
+            let dy : f32 = (self.last_pos.y - y) * self.sensitivity;
+            self.last_pos = Vec2 { x, y };
+            self.pan_camera(dx, dy);           
         }
-
-        let dx : f32 = (self.last_pos.x - x) * self.sensitivity;
-        let dy : f32 = (self.last_pos.y - y) * self.sensitivity;
-
-        self.last_pos = Vec2 { x, y };
-
-        self.rotate_camera(dx, dy);
     }
 
     fn rotate_camera(&mut self, dx : f32, dy : f32) {
         self.offset = self.offset.rotate_axis(WORLD_UP, dx.to_radians());
-        let mut right : Vec3 = WORLD_UP;
-        right = right.cross(self.offset).normalize();
+        let forward = (-self.offset).normalize();
+        let mut right = forward.cross(WORLD_UP).normalize();
         if right.length() < 0.00001 {
             right = Vec3{x : 1.0, y : 0.0, z : 0.0};
         }
        self.offset = self.offset.rotate_axis(right, dy.to_radians());
     }
 
-    pub fn construct_camera(&self) -> Camera {
-        Camera::build_camera_matrix(self.offset * self.zoom_factor, self.target, 1.0) // TODO:
-                                                                                       // Aspect
+    fn pan_camera(&mut self, dx : f32, dy : f32) {
+        let forward : Vec3 = (-self.offset).normalize();
+        let right : Vec3 = forward.cross(WORLD_UP).normalize();
+        let up = right.cross(forward);
+
+        let scale : f32 = (self.offset * self.zoom_factor).length() * 0.005;
+        let pan : Vec3 = (-dx * right + dy * up) * scale;
+        self.target += pan;
+    }
+
+    pub fn construct_camera(&self, aspect : f32) -> Camera {
+        let camera_position = self.target + self.offset * self.zoom_factor;
+        Camera::build_camera_matrix(camera_position, self.target, aspect)
     }
 
     pub fn reset_mouse_pos(&mut self, x : f32, y : f32) {

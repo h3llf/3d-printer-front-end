@@ -4,6 +4,13 @@ use imgui_wgpu::{Renderer, RendererConfig};
 use imgui_winit_support::WinitPlatform;
 use std::time::Instant;
 use winit::{window::Window, event::*};
+use rfd::{FileDialog, AsyncFileDialog};
+use std::path::PathBuf;
+
+pub enum UIAction {
+    LoadFile(PathBuf),
+    None,
+}
 
 pub struct InterfaceContext {
     pub context : imgui::Context,
@@ -62,7 +69,6 @@ impl UI {
             renderer_conf);
 
         let last_frame = Instant::now();
-        let last_cursor = None;
 
         self.interface_context = Some(InterfaceContext{
             context,
@@ -70,7 +76,7 @@ impl UI {
             renderer,
             clear_colour,
             last_frame,
-            last_cursor,
+            last_cursor : None,
         });
 
         self.frame_count = 0;
@@ -78,7 +84,7 @@ impl UI {
         println!("Imgui initialized");
     }
 
-    pub fn draw_ui(&mut self, window : &Window) {
+    pub fn draw_ui(&mut self, window : &Window) -> UIAction {
         let ctx : &mut InterfaceContext = self.interface_context.as_mut().unwrap();
 
         let now : Instant = Instant::now();
@@ -90,14 +96,27 @@ impl UI {
             .expect("Failed to prepare imgui frame");
 
         self.frame_count += 1;
-        
+
+        let mut file_dialog_btn : bool = false;
+
         let imgui_frame = ctx.context.frame();
         imgui_frame.window("Test")
             .size([300.0, 100.0], imgui::Condition::FirstUseEver)
             .build(|| {
                 imgui_frame.text(format!{"Hello world: {}", self.frame_count});
-                imgui_frame.button("btn");
+                file_dialog_btn = imgui_frame.button("Open G-Code");
             });
+
+        // TODO: This should be moved to a dedicated gcode loader/parser
+        if file_dialog_btn {
+            let file_dir = FileDialog::new()
+                .add_filter("G-code files", &["gcode"])
+                .pick_file();
+
+            if let Some(file_str) = file_dir {
+                    return UIAction::LoadFile(file_str);
+            }
+        }
 
         if ctx.last_cursor != imgui_frame.mouse_cursor() {
             ctx.last_cursor = imgui_frame.mouse_cursor();
@@ -105,7 +124,7 @@ impl UI {
 
         ctx.platform.prepare_render(imgui_frame, window);
 
-
+        UIAction::None
     }
 
     pub fn handle_event<T>(&mut self, window : &Window, event : &Event<T>) {

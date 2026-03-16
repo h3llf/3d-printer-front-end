@@ -1,5 +1,8 @@
 mod interface;
-use interface::UI;
+use interface::{UI, UIAction};
+
+mod gcode_parser;
+use gcode_parser::GCodeParser;
 
 mod gfx;
 use gfx::render::*;
@@ -15,6 +18,7 @@ pub struct MainContext {
     window : Option<Arc<Window>>,
     renderer : Option<GFXRenderer>,
     ui : UI,
+    gcode_parser : GCodeParser
 }
 
 impl MainContext {
@@ -27,8 +31,21 @@ impl MainContext {
     }
 
     pub fn render(&mut self) {
-        self.ui.draw_ui(self.window.as_ref().unwrap());
+        let action : UIAction = self.ui.draw_ui(self.window.as_ref().unwrap());
+        self.process_ui_action(action);
         self.renderer.as_mut().unwrap().render(self.ui.interface_context.as_mut().unwrap());
+    }
+
+    pub fn process_ui_action(&mut self, action : UIAction) {
+        match action {
+            UIAction::None => {
+                return;
+            } UIAction::LoadFile(dir) => {
+                self.gcode_parser.load_gcode(&dir);
+                self.renderer.as_mut().unwrap().update_gcode_points(&self.gcode_parser.render_data);
+                println!("Selected: {}", dir.to_str().unwrap());
+            }
+        }
     }
 }
 
@@ -61,17 +78,30 @@ impl ApplicationHandler for AppMain {
                 println!("Window closed");
                 event_loop.exit();
             } WindowEvent::RedrawRequested => {
+                let aspect : f32 = self.main_context.renderer.as_ref().unwrap().get_aspect();
                 self.main_context.renderer.as_ref().unwrap().update_camera(
-                    &self.orbit_cam.construct_camera());
+                    &self.orbit_cam.construct_camera(aspect));
                 self.main_context.window.as_ref().unwrap().request_redraw();
                 self.main_context.render();
             } WindowEvent::Resized(new_size) => {
                 self.main_context.renderer.as_mut().unwrap().reconfigure_surface(new_size);
             } WindowEvent::MouseInput { device_id , state, button } => {
+                match button {
+                    MouseButton::Left => {
+                        let just_pressed : bool = state == ElementState::Pressed;
+                        self.orbit_cam.just_pressed = just_pressed;
+                        self.orbit_cam.pressed = just_pressed;
+                    } MouseButton::Middle => {
+                        let just_pressed : bool = state == ElementState::Pressed;
+//                        self.orbit_cam.middle_just_pressed = just_pressed;
+                        self.orbit_cam.just_pressed = just_pressed;
+                        self.orbit_cam.middle_pressed = just_pressed;
+                    } _=> {
+
+                    }
+                }
                 if button == MouseButton::Left {
-                    let just_pressed : bool = state == ElementState::Pressed;
-                    self.orbit_cam.just_pressed = just_pressed;
-                    self.orbit_cam.pressed = just_pressed;
+
                 }
             } WindowEvent::CursorMoved { device_id, position } => {
                 if self.orbit_cam.just_pressed {
@@ -89,7 +119,6 @@ impl ApplicationHandler for AppMain {
     
                 self.orbit_cam.zoom_factor += scroll_amt / 5.0;
                 self.orbit_cam.zoom_factor = self.orbit_cam.zoom_factor.max(0.2);
-                println!("{:?} {:?}", delta, phase);
             }
             _=> { }
         }

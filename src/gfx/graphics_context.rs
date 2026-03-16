@@ -9,5 +9,6 @@ pub struct GraphicsContext {
     pub size : PhysicalSize<u32>,
     pub surface : wgpu::Surface<'static>,
     pub surface_format : wgpu::TextureFormat,
-//    gcode_pass : GCodePass,
+    pub depth_texture : wgpu::Texture,
+    pub depth_view : wgpu::TextureView,
 }
