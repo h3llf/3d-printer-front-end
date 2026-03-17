@@ -67,44 +67,44 @@ fn main(
 
 			let vertex_base = j * 4;
 
-			// Normal vectors
-			vertices[vertex_base + 0u].nx = right.x;
-			vertices[vertex_base + 0u].ny = right.y;
-			vertices[vertex_base + 0u].nz = right.z;
+			let forward = line_dir;
+			vertices[vertex_base + 0u].nx = forward.x;
+			vertices[vertex_base + 0u].ny = forward.y;
+			vertices[vertex_base + 0u].nz = forward.z;
 
-			vertices[vertex_base + 1u].nx = -right.x;
-			vertices[vertex_base + 1u].ny = right.y;
-			vertices[vertex_base + 1u].nz = -right.z;
+			vertices[vertex_base + 1u].nx = forward.x;
+			vertices[vertex_base + 1u].ny = forward.y;
+			vertices[vertex_base + 1u].nz = forward.z;
 
-			vertices[vertex_base + 2u].nx = right.x;
-			vertices[vertex_base + 2u].ny = right.y;
-			vertices[vertex_base + 2u].nz = right.z;
+			vertices[vertex_base + 2u].nx = forward.x;
+			vertices[vertex_base + 2u].ny = forward.y;
+			vertices[vertex_base + 2u].nz = forward.z;
 
-			vertices[vertex_base + 3u].nx = -right.x;
-			vertices[vertex_base + 3u].ny = right.y;
-			vertices[vertex_base + 3u].nz = -right.z;
+			vertices[vertex_base + 3u].nx = forward.x;
+			vertices[vertex_base + 3u].ny = forward.y;
+			vertices[vertex_base + 3u].nz = forward.z;
 
 			right = normalize(right) * params.line_width;
 
 			// Position
-			vertices[vertex_base + 0u].x = p0.p.x + right.x;
-			vertices[vertex_base + 0u].y = p0.p.y + right.y;
-			vertices[vertex_base + 0u].z = p0.p.z + right.z;
+			vertices[vertex_base + 0u].x = p0.p.x;// + right.x;
+			vertices[vertex_base + 0u].y = p0.p.y;// + right.y;
+			vertices[vertex_base + 0u].z = p0.p.z;// + right.z;
 			vertices[vertex_base + 0u].dist = 1;
 
-			vertices[vertex_base + 1u].x = p0.p.x - right.x;
-			vertices[vertex_base + 1u].y = p0.p.y - right.y;
-			vertices[vertex_base + 1u].z = p0.p.z - right.z;
+			vertices[vertex_base + 1u].x = p0.p.x;// - right.x;
+			vertices[vertex_base + 1u].y = p0.p.y;// - right.y;
+			vertices[vertex_base + 1u].z = p0.p.z;// - right.z;
 			vertices[vertex_base + 1u].dist = 0;
 
-			vertices[vertex_base + 2u].x = p1.p.x + right.x;
-			vertices[vertex_base + 2u].y = p1.p.y + right.y;
-			vertices[vertex_base + 2u].z = p1.p.z + right.z;
+			vertices[vertex_base + 2u].x = p1.p.x;// + right.x;
+			vertices[vertex_base + 2u].y = p1.p.y;// + right.y;
+			vertices[vertex_base + 2u].z = p1.p.z;// + right.z;
 			vertices[vertex_base + 2u].dist = 1;
 
-			vertices[vertex_base + 3u].x = p1.p.x - right.x;
-			vertices[vertex_base + 3u].y = p1.p.y - right.y;
-			vertices[vertex_base + 3u].z = p1.p.z - right.z;
+			vertices[vertex_base + 3u].x = p1.p.x;// - right.x;
+			vertices[vertex_base + 3u].y = p1.p.y;// - right.y;
+			vertices[vertex_base + 3u].z = p1.p.z;// - right.z;
 			vertices[vertex_base + 3u].dist = 0;
 
 			let index_base = range.start_index + (j - range.start_point) * 6;

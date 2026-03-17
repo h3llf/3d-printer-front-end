@@ -5,6 +5,8 @@ use bytemuck::{Pod, Zeroable};
 #[derive(Clone, Copy, Pod, Zeroable)]
 pub struct Camera {
     pub view_proj : [[f32; 4]; 4],
+    pub position : [f32; 3],
+    pub _padding : f32,
 }
 
 impl Camera {
@@ -15,9 +17,13 @@ impl Camera {
     {
         let view = Mat4::look_at_rh(eye, target, Vec3::Y);
 
-        let proj = Mat4::perspective_rh(90.0_f32.to_radians(), aspect, 0.1, 100.0);
+        let proj = Mat4::perspective_rh(70.0_f32.to_radians(), aspect, 0.1, 100.0);
 
-        Camera{view_proj : (proj * view).to_cols_array_2d()}
+        Camera{
+            view_proj : (proj * view).to_cols_array_2d(),
+            position : eye.to_array(),
+            _padding : 0.0,
+        }
     }
 }
 
@@ -73,9 +79,9 @@ impl OrbitCamera {
         self.offset = self.offset.rotate_axis(WORLD_UP, dx.to_radians());
         let forward = (-self.offset).normalize();
         let mut right = forward.cross(WORLD_UP).normalize();
-        if right.length() < 0.00001 {
-            right = Vec3{x : 1.0, y : 0.0, z : 0.0};
-        }
+//        if right.length() < 0.00001 {
+//            right = Vec3{x : 1.0, y : 0.0, z : 0.0};
+//        }
        self.offset = self.offset.rotate_axis(right, dy.to_radians());
     }
 

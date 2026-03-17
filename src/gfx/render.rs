@@ -133,7 +133,8 @@ impl GFXRenderer {
         self.gfx_ctx.queue.write_buffer(
             &self.gcode_pass.render_buffers.as_ref().unwrap().camera_buffer, 
             0, 
-            bytemuck::cast_slice(camera.view_proj.as_ref()));
+            //bytemuck::cast_slice(camera.view_proj.as_ref()));
+            bytemuck::bytes_of(camera));
     }
 
     pub fn update_gcode_points(&mut self, render_data : &GCodeRenderData) {
