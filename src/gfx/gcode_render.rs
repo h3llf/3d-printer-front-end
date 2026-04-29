@@ -3,7 +3,6 @@ use super::camera;
 use std::borrow::Cow;
 use glam::{Mat4, Vec3};
 use bytemuck::{Pod, Zeroable};
-use rand;
 
 pub const SEGMENT_COUNT : usize = 500;
 
@@ -81,7 +80,10 @@ impl GCodeRenderData {
 pub struct Vertex {
     pub pos : [f32; 3],
     pub dist : f32,
-    pub normal : [f32; 3],
+    pub forward : [f32; 3],
+    pub miter_scale : f32,
+    pub tangent : [f32; 3],
+    _padding : f32,
 }
 
 #[repr(C)]
@@ -233,6 +235,16 @@ impl GCodePass {
             wgpu::VertexAttribute {
                 offset : 16,
                 shader_location : 2,
+                format : wgpu::VertexFormat::Float32x3
+            },
+            wgpu::VertexAttribute {
+                offset : 28,
+                shader_location : 3,
+                format : wgpu::VertexFormat::Float32
+            },
+            wgpu::VertexAttribute {
+                offset : 32,
+                shader_location : 4,
                 format : wgpu::VertexFormat::Float32x3
             },
         ];

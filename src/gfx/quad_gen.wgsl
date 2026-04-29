@@ -9,13 +9,11 @@ struct SegmentRange {
 };
 
 struct Vertex {
-	x : f32,
-	y : f32,
-	z : f32,
+	pos : vec3<f32>,
 	dist : f32,
-	nx : f32,
-	ny : f32,
-	nz : f32,
+	forward : vec3<f32>,
+	miter_scale : f32,
+	fwd2 : vec3<f32>
 };
 
 struct Params {
@@ -54,57 +52,70 @@ fn main(
 
 	for (var i = id.x; i < params.range_count; i += total_threads) {
 		let range : SegmentRange = segment_ranges[i];
-		for (var j = range.start_point; j < range.end_point; j += 1) {
-			let p0 : Point = points[j];
-			let p1 : Point = points[j + 1];
+		if range.end_point <= range.start_point {
+			continue;
+		}
 
-			let line_dir = normalize(p0.p - p1.p);
-			var right = cross(line_dir, up_dir);
+		for (var j = range.start_point; j < range.end_point - 1; j += 1) {
+			let p1 : Point = points[j];
+			let p2 : Point = points[j + 1];
 
-			if (length(right) < 0.0001) {
-				right = vec3<f32>(1.0, 0.0, 0.0);
+			let ld1 = normalize(p2.p - p1.p);
+
+			var p0 : Point;
+			if (j == 0u) {
+				p0.p = points[j].p + ld1;
+			} else {
+				p0 = points[j - 1];
 			}
 
+			var p3 : Point;
+			if (j == range.end_point - 2) {
+				p3.p = points[j + 1].p - ld1;
+			} else {
+				p3 = points[j + 2];
+			}
+
+			let ld0 = normalize(p1.p - p0.p);
+			let ld2 = normalize(p3.p - p2.p);
+
 			let vertex_base = j * 4;
+			var tan0 = ld1;
+			if (length(ld0 + ld1) > 1e-4) {
+				tan0 = normalize(ld0 + ld1);
+			}
+			var tan1 = ld1;
+			if (length(ld2 + ld1) > 1e-4) {
+				tan1 = normalize(ld2 + ld1);
+			}
 
-			let forward = line_dir;
-			vertices[vertex_base + 0u].nx = forward.x;
-			vertices[vertex_base + 0u].ny = forward.y;
-			vertices[vertex_base + 0u].nz = forward.z;
-
-			vertices[vertex_base + 1u].nx = forward.x;
-			vertices[vertex_base + 1u].ny = forward.y;
-			vertices[vertex_base + 1u].nz = forward.z;
-
-			vertices[vertex_base + 2u].nx = forward.x;
-			vertices[vertex_base + 2u].ny = forward.y;
-			vertices[vertex_base + 2u].nz = forward.z;
-
-			vertices[vertex_base + 3u].nx = forward.x;
-			vertices[vertex_base + 3u].ny = forward.y;
-			vertices[vertex_base + 3u].nz = forward.z;
-
-			right = normalize(right) * params.line_width;
+			// Directions
+			let forward = ld1;
+			vertices[vertex_base + 0u].fwd2 = ld0;
+//			vertices[vertex_base + 0u].fwd2 = tan0;
+			vertices[vertex_base + 0u].forward = forward;
+			vertices[vertex_base + 0u].miter_scale = 1.0;
+			vertices[vertex_base + 1u].fwd2 = ld0;
+//			vertices[vertex_base + 1u].fwd2 = tan0;
+			vertices[vertex_base + 1u].forward = forward;
+			vertices[vertex_base + 1u].miter_scale = 1.0;
+			vertices[vertex_base + 2u].fwd2 = ld2;
+//			vertices[vertex_base + 2u].fwd2 = tan1;
+			vertices[vertex_base + 2u].forward = forward;
+			vertices[vertex_base + 2u].miter_scale = -1.0;
+			vertices[vertex_base + 3u].fwd2 = ld2;
+//			vertices[vertex_base + 3u].fwd2 = tan1;
+			vertices[vertex_base + 3u].forward = forward;
+			vertices[vertex_base + 3u].miter_scale = -1.0;
 
 			// Position
-			vertices[vertex_base + 0u].x = p0.p.x;// + right.x;
-			vertices[vertex_base + 0u].y = p0.p.y;// + right.y;
-			vertices[vertex_base + 0u].z = p0.p.z;// + right.z;
+			vertices[vertex_base + 0u].pos = p1.p;
 			vertices[vertex_base + 0u].dist = 1;
-
-			vertices[vertex_base + 1u].x = p0.p.x;// - right.x;
-			vertices[vertex_base + 1u].y = p0.p.y;// - right.y;
-			vertices[vertex_base + 1u].z = p0.p.z;// - right.z;
+			vertices[vertex_base + 1u].pos = p1.p;
 			vertices[vertex_base + 1u].dist = 0;
-
-			vertices[vertex_base + 2u].x = p1.p.x;// + right.x;
-			vertices[vertex_base + 2u].y = p1.p.y;// + right.y;
-			vertices[vertex_base + 2u].z = p1.p.z;// + right.z;
+			vertices[vertex_base + 2u].pos = p2.p;
 			vertices[vertex_base + 2u].dist = 1;
-
-			vertices[vertex_base + 3u].x = p1.p.x;// - right.x;
-			vertices[vertex_base + 3u].y = p1.p.y;// - right.y;
-			vertices[vertex_base + 3u].z = p1.p.z;// - right.z;
+			vertices[vertex_base + 3u].pos = p2.p;
 			vertices[vertex_base + 3u].dist = 0;
 
 			let index_base = range.start_index + (j - range.start_point) * 6;
